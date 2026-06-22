@@ -458,63 +458,6 @@
       const [lastSync, setLastSync] = useState(null);
       const [syncStatus, setSyncStatus] = useState('synced'); // 'synced', 'syncing', 'error'
       
-      // Load data from Firebase on mount
-      useEffect(() => {
-        const loadAllData = async () => {
-          setIsLoading(true);
-          setSyncStatus('syncing');
-          try {
-            const [
-              fbProviders,
-              fbMdDoProviders,
-              fbLocumProviders,
-              fbVacations,
-              fbHolidays,
-              fbManualAssignments,
-              fbSchedule,
-              fbLogicRules,
-              fbDailyAssignments,
-              fbWaterfallData,
-              fbChangeLog
-            ] = await Promise.all([
-              loadFromFirebase('providers', null),
-              loadFromFirebase('mdDoProviders', null),
-              loadFromFirebase('locumProviders', null),
-              loadFromFirebase('vacations', null),
-              loadFromFirebase('holidays', null),
-              loadFromFirebase('manualAssignments', null),
-              loadFromFirebase('schedule', null),
-              loadFromFirebase('logicRules', null),
-              loadFromFirebase('dailyAssignments', null),
-              loadFromFirebase('waterfallData', null),
-              loadFromFirebase('changeLog', null)
-            ]);
-            
-            // Only update if Firebase has data (not null)
-            if (fbProviders) setProviders(fbProviders);
-            if (fbMdDoProviders) setMdDoProviders(fbMdDoProviders);
-            if (fbLocumProviders) setLocumProviders(fbLocumProviders);
-            if (fbVacations) setVacations(fbVacations);
-            if (fbHolidays) setHolidays(fbHolidays);
-            if (fbManualAssignments) setManualAssignments(fbManualAssignments);
-            if (fbSchedule) setSchedule(fbSchedule);
-            if (fbLogicRules) setLogicRules(fbLogicRules);
-            if (fbDailyAssignments) setDailyAssignments(fbDailyAssignments);
-            if (fbWaterfallData) setWaterfallData(fbWaterfallData);
-            if (fbChangeLog) setChangeLog(fbChangeLog);
-            
-            setLastSync(new Date());
-            setSyncStatus('synced');
-          } catch (error) {
-            console.error('Error loading from Firebase:', error);
-            setSyncStatus('error');
-          }
-          setIsLoading(false);
-        };
-        
-        loadAllData();
-      }, []);
-      
       // Daily Assignments state
       const defaultDailyAssignments = {
         selectedDate: formatDate(new Date()),
@@ -1079,6 +1022,63 @@
       useEffect(() => { saveToStorage('changeLog', changeLog); }, [changeLog]);
       useEffect(() => { saveToStorage('logicRules', logicRules); }, [logicRules]);
       useEffect(() => { saveToStorage('locumProviders', locumProviders); }, [locumProviders]);
+      
+      // Load data from Firebase on mount
+      useEffect(() => {
+        const loadAllData = async () => {
+          setIsLoading(true);
+          setSyncStatus('syncing');
+          try {
+            const [
+              fbProviders,
+              fbMdDoProviders,
+              fbLocumProviders,
+              fbVacations,
+              fbHolidays,
+              fbManualAssignments,
+              fbSchedule,
+              fbLogicRules,
+              fbDailyAssignments,
+              fbWaterfallData,
+              fbChangeLog
+            ] = await Promise.all([
+              loadFromFirebase('providers', null),
+              loadFromFirebase('mdDoProviders', null),
+              loadFromFirebase('locumProviders', null),
+              loadFromFirebase('vacations', null),
+              loadFromFirebase('holidays', null),
+              loadFromFirebase('manualAssignments', null),
+              loadFromFirebase('schedule', null),
+              loadFromFirebase('logicRules', null),
+              loadFromFirebase('dailyAssignments', null),
+              loadFromFirebase('waterfallData', null),
+              loadFromFirebase('changeLog', null)
+            ]);
+            
+            // Only update if Firebase has data (not null)
+            if (fbProviders) setProviders(fbProviders);
+            if (fbMdDoProviders) setMdDoProviders(fbMdDoProviders);
+            if (fbLocumProviders) setLocumProviders(fbLocumProviders);
+            if (fbVacations) setVacations(fbVacations);
+            if (fbHolidays) setHolidays(fbHolidays);
+            if (fbManualAssignments) setManualAssignments(fbManualAssignments);
+            if (fbSchedule) setSchedule(fbSchedule);
+            if (fbLogicRules) setLogicRules(fbLogicRules);
+            if (fbDailyAssignments) setDailyAssignments(fbDailyAssignments);
+            if (fbWaterfallData) setWaterfallData(fbWaterfallData);
+            if (fbChangeLog) setChangeLog(fbChangeLog);
+            
+            setLastSync(new Date());
+            setSyncStatus('synced');
+          } catch (error) {
+            console.error('Error loading from Firebase:', error);
+            setSyncStatus('error');
+          }
+          setIsLoading(false);
+        };
+        
+        loadAllData();
+      }, []);
 
       // Vacation helpers - 9 day span for SCHEDULING
       const getVacationDays = useCallback((vacation) => {
@@ -4556,7 +4556,6 @@
                                         dateStr={dateStr}
                                         value={providerId}
                                         onSelect={handleSelect}
-                                        placeholder={`${slotIdx + 1}...`}
                                         themeColor={isWeekend ? 'amber' : 'default'}
                                       />
                                     </td>
