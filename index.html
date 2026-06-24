@@ -9,6 +9,23 @@
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // Initialize Supabase
+    const SUPABASE_URL = 'https://tdlbsgjuprisncwffocb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbGJzZ2p1cHJpc25jd2Zmb2NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDY5MzYsImV4cCI6MjA5NzgyMjkzNn0.wtnzu-BMrh2lNy3tA-xTg3ouvJg80Xv_3P56D4heKf0';
+    
+    // Wait for Supabase to load
+    window.supabaseReady = new Promise((resolve) => {
+      const checkSupabase = setInterval(() => {
+        if (window.supabase) {
+          window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          clearInterval(checkSupabase);
+          resolve(window.supabaseClient);
+        }
+      }, 50);
+    });
+  </script>
   <style>
     body { margin: 0; padding: 0; }
     
@@ -229,10 +246,54 @@
     const getWeekStart = (date) => { const d = new Date(date); d.setDate(d.getDate() - d.getDay()); return d; };
     const getMonthName = (i) => ['January','February','March','April','May','June','July','August','September','October','November','December'][i];
 
-    // Local Storage helpers
+    // Supabase Storage helpers
+    const saveToSupabase = async (key, data) => {
+      try {
+        const client = window.supabaseClient;
+        if (!client) return;
+        
+        const { error } = await client
+          .from('chronocall_data')
+          .upsert({ 
+            id: key, 
+            data: data,
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) console.error('Supabase save error:', error);
+      } catch (e) {
+        console.error('Error saving to Supabase:', e);
+      }
+    };
+
+    const loadFromSupabase = async (key) => {
+      try {
+        const client = window.supabaseClient;
+        if (!client) return null;
+        
+        const { data, error } = await client
+          .from('chronocall_data')
+          .select('data')
+          .eq('id', key)
+          .single();
+        
+        if (error) {
+          if (error.code !== 'PGRST116') console.error('Supabase load error:', error);
+          return null;
+        }
+        return data?.data || null;
+      } catch (e) {
+        console.error('Error loading from Supabase:', e);
+        return null;
+      }
+    };
+
+    // Local Storage helpers (used as cache and fallback)
     const saveToStorage = (key, data) => {
       try {
         localStorage.setItem(`chronocall_${key}`, JSON.stringify(data));
+        // Also save to Supabase
+        saveToSupabase(key, data);
       } catch (e) {
         console.error('Error saving:', e);
       }
@@ -976,6 +1037,44 @@
       useEffect(() => { saveToStorage('changeLog', changeLog); }, [changeLog]);
       useEffect(() => { saveToStorage('logicRules', logicRules); }, [logicRules]);
       useEffect(() => { saveToStorage('locumProviders', locumProviders); }, [locumProviders]);
+
+      // Load data from Supabase on mount
+      useEffect(() => {
+        const loadFromCloud = async () => {
+          await window.supabaseReady;
+          
+          const keys = [
+            'providers', 'mdDoProviders', 'locumProviders', 'vacations', 
+            'holidays', 'manualAssignments', 'schedule', 'logicRules',
+            'dailyAssignments', 'waterfallData', 'changeLog'
+          ];
+          
+          for (const key of keys) {
+            const cloudData = await loadFromSupabase(key);
+            if (cloudData) {
+              // Update localStorage with cloud data
+              localStorage.setItem(`chronocall_${key}`, JSON.stringify(cloudData));
+              
+              // Update state based on key
+              switch(key) {
+                case 'providers': setProviders(cloudData); break;
+                case 'mdDoProviders': setMdDoProviders(cloudData); break;
+                case 'locumProviders': setLocumProviders(cloudData); break;
+                case 'vacations': setVacations(cloudData); break;
+                case 'holidays': setHolidays(cloudData); break;
+                case 'manualAssignments': setManualAssignments(cloudData); break;
+                case 'schedule': setSchedule(cloudData); break;
+                case 'logicRules': setLogicRules(cloudData); break;
+                case 'dailyAssignments': setDailyAssignments(cloudData); break;
+                case 'waterfallData': setWaterfallData(cloudData); break;
+                case 'changeLog': setChangeLog(cloudData); break;
+              }
+            }
+          }
+        };
+        
+        loadFromCloud();
+      }, []);
 
       // Vacation helpers - 9 day span for SCHEDULING
       const getVacationDays = useCallback((vacation) => {
