@@ -324,6 +324,8 @@
 
     function ChronoCall({ onLogout }) {
       const [isLoadingData, setIsLoadingData] = useState(true);
+      const [dataLoaded, setDataLoaded] = useState(false);
+      
       const defaultProviders = [
         { id: 'AA', name: 'Alonso Arcadia', profession: 'AA', active: true, startDate: null, endDate: null, email: '', phone: '' },
         { id: 'AD', name: 'Anna Driggers', profession: 'AA', active: true, startDate: null, endDate: null, email: '', phone: '' },
@@ -1052,40 +1054,48 @@
       useEffect(() => { saveToStorage('logicRules', logicRules); }, [logicRules]);
       useEffect(() => { saveToStorage('locumProviders', locumProviders); }, [locumProviders]);
 
-      // Load data from Supabase on mount
+      // Load data from Supabase on mount - ALWAYS use Supabase as source of truth
       useEffect(() => {
         const loadFromCloud = async () => {
           setIsLoadingData(true);
-          await window.supabaseReady;
+          console.log('Starting Supabase data load...');
           
-          const keys = [
-            'providers', 'mdDoProviders', 'locumProviders', 'vacations', 
-            'holidays', 'manualAssignments', 'schedule', 'logicRules',
-            'dailyAssignments', 'waterfallData', 'changeLog'
-          ];
-          
-          for (const key of keys) {
-            const cloudData = await loadFromSupabase(key);
-            if (cloudData) {
-              // Update localStorage with cloud data
-              localStorage.setItem(`chronocall_${key}`, JSON.stringify(cloudData));
-              
-              // Update state based on key
-              switch(key) {
-                case 'providers': setProviders(cloudData); break;
-                case 'mdDoProviders': setMdDoProviders(cloudData); break;
-                case 'locumProviders': setLocumProviders(cloudData); break;
-                case 'vacations': setVacations(cloudData); break;
-                case 'holidays': setHolidays(cloudData); break;
-                case 'manualAssignments': setManualAssignments(cloudData); break;
-                case 'schedule': setSchedule(cloudData); break;
-                case 'logicRules': setLogicRules(cloudData); break;
-                case 'dailyAssignments': setDailyAssignments(cloudData); break;
-                case 'waterfallData': setWaterfallData(cloudData); break;
-                case 'changeLog': setChangeLog(cloudData); break;
-              }
-            }
+          try {
+            await window.supabaseReady;
+            console.log('Supabase ready, loading data...');
+            
+            // Load each piece of data from Supabase
+            const cloudProviders = await loadFromSupabase('providers');
+            const cloudMdDoProviders = await loadFromSupabase('mdDoProviders');
+            const cloudLocumProviders = await loadFromSupabase('locumProviders');
+            const cloudVacations = await loadFromSupabase('vacations');
+            const cloudHolidays = await loadFromSupabase('holidays');
+            const cloudManualAssignments = await loadFromSupabase('manualAssignments');
+            const cloudSchedule = await loadFromSupabase('schedule');
+            const cloudLogicRules = await loadFromSupabase('logicRules');
+            const cloudDailyAssignments = await loadFromSupabase('dailyAssignments');
+            const cloudWaterfallData = await loadFromSupabase('waterfallData');
+            const cloudChangeLog = await loadFromSupabase('changeLog');
+            
+            // Update state with Supabase data (use defaults only if Supabase has nothing)
+            if (cloudProviders) setProviders(cloudProviders);
+            if (cloudMdDoProviders) setMdDoProviders(cloudMdDoProviders);
+            if (cloudLocumProviders) setLocumProviders(cloudLocumProviders);
+            if (cloudVacations) setVacations(cloudVacations);
+            if (cloudHolidays) setHolidays(cloudHolidays);
+            if (cloudManualAssignments) setManualAssignments(cloudManualAssignments);
+            if (cloudSchedule) setSchedule(cloudSchedule);
+            if (cloudLogicRules) setLogicRules(cloudLogicRules);
+            if (cloudDailyAssignments) setDailyAssignments(cloudDailyAssignments);
+            if (cloudWaterfallData) setWaterfallData(cloudWaterfallData);
+            if (cloudChangeLog) setChangeLog(cloudChangeLog);
+            
+            console.log('Data loaded from Supabase');
+            setDataLoaded(true);
+          } catch (error) {
+            console.error('Error loading from Supabase:', error);
           }
+          
           setIsLoadingData(false);
         };
         
